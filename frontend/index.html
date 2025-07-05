@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RAG Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            height: 80vh;
+        }
+        .chat-panel {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .debug-panel {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .debug-columns {
+            display: flex;
+            gap: 15px;
+            height: 100%;
+        }
+        .debug-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .debug-column h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 1.1em;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        #log {
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            height: 120px;
+            overflow-y: auto;
+            font-size: 0.9em;
+        }
+        .debug-section {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 3px;
+            border-left: 3px solid #007bff;
+        }
+        .debug-section h4 {
+            margin: 0 0 8px 0;
+            color: #007bff;
+        }
+        .debug-content {
+            font-size: 0.85em;
+            max-height: 200px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 3px;
+            white-space: pre-wrap;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 8px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #answer {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e7f3ff;
+            border-radius: 3px;
+            min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h2>RAG Chat System with Debug Panel</h2>
+    
+    <div class="container">
+        <div class="chat-panel">
+            <h3>Chat Interface</h3>
+            <label for="agent-select"><b>Select Agent:</b></label>
+            <select id="agent-select" style="margin-bottom:10px; margin-left:10px;">
+                <option value="financial">Financial RAG Agent</option>
+                <option value="broker">Broker Agent</option>
+                <option value="stock">Stock Agent (Prompt Engineering)</option>
+            </select>
+            <label for="market-select"><b>Select Market:</b></label>
+            <select id="market-select" style="margin-bottom:10px; margin-left:10px;"></select>
+            <br>
+            <!-- Agent Prompt Engineering Section -->
+            <div id="agent-prompt-section" style="margin:15px 0; padding:12px; background:#f4f8fa; border-radius:5px; border:1px solid #b0c4de; display:none;">
+                <b>Prompt Engineering Template (editable):</b>
+                <textarea id="agent-prompt" rows="6" style="width:100%;margin-top:6px;font-family:monospace;font-size:1em;">You are a stock trading agent. Your job is to analyze the following user query and market context, and recommend a trading action in JSON format.\nUser Query: {{question}}\nMarket: {{market}}\nRespond ONLY with a JSON object like: {'action': 'buy'/'sell'/'hold', 'symbol': 'AAPL', 'amount': 10, 'reason': '...'}\nIf you don't have enough information, respond with: {'action': 'hold', 'reason': 'Insufficient data'}.</textarea>
+                <div style="margin-top:8px; color:#888; font-size:0.95em;">You can edit the prompt template above. <b>{{question}}</b> and <b>{{market}}</b> will be replaced with your input.</div>
+            </div>
+            <div style="margin:8px 0 4px 0; color:#555; font-size:0.95em;">
+                <b>API Endpoint:</b> <span id="api-endpoint">/chat_debug</span>
+            </div>
+            <input id="question" type="text" placeholder="Enter question..." />
+            <button onclick="ask()">Ask</button>
+            <div id="answer"></div>
+            <div id="json-output" style="margin-top:10px; padding:10px; background:#f8f9fa; border-radius:4px; border:1px solid #e0e0e0; display:none;">
+                <b>Agent JSON Output:</b>
+                <pre id="json-output-pre" style="margin:0; font-size:1em; color:#222;"></pre>
+            </div>
+            <div id="log"></div>
+            <div id="agent-info" style="margin-top:30px; padding:15px; background:#f8f9fa; border-radius:5px; border:1px solid #e0e0e0;">
+                <h4>🤖 Financial RAG Agent</h4>
+                <p>
+                    An AI agent that can answer questions about S&amp;P 500 stocks, financial concepts, and investment strategies using a Retrieval-Augmented Generation (RAG) system.<br>
+                    It combines up-to-date market data, financial definitions, and LLM reasoning.
+                </p>
+                <b>Example questions you can try:</b>
+                <ul style="margin-top:8px;">
+                    <li>What is the P/E ratio?</li>
+                    <li>How did AAPL perform in June 2024?</li>
+                    <li>Explain the difference between value and growth investing.</li>
+                    <li>What is a stop-loss order?</li>
+                    <li>What does it mean if a stock is overbought according to RSI?</li>
+                    <li>Summarize the recent performance of MSFT.</li>
+                </ul>
+            </div>
+            <div id="broker-agent-info" style="margin-top:20px; padding:15px; background:#f8f9fa; border-radius:5px; border:1px solid #e0e0e0;">
+                <h4>💼 Broker Agent</h4>
+                <p>
+                    An AI broker agent that analyzes S&amp;P 500 stocks and recommends the best investment opportunities based on recent performance, trends, and financial indicators.<br>
+                    It can answer questions about which stocks to buy, portfolio allocation, and general investment advice.
+                </p>
+                <b>Example questions you can try:</b>
+                <ul style="margin-top:8px;">
+                    <li>What is the best stock to invest in right now?</li>
+                    <li>Which S&amp;P 500 stock had the highest return last month?</li>
+                    <li>Recommend a diversified portfolio for a moderate risk investor.</li>
+                    <li>Should I buy AAPL or MSFT?</li>
+                    <li>What are the top 3 growth stocks currently?</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="debug-panel">
+            <h3>LLM Debug Information</h3>
+            <div class="debug-columns">
+                <div class="debug-column">
+                    <h4>Live Process Updates</h4>
+                    
+                    <div class="debug-section">
+                        <h4>Process Steps</h4>
+                        <div id="debug-process" class="debug-content">No process data yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>Timing Breakdown</h4>
+                        <div id="debug-timing" class="debug-content">No timing data yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>Token Information</h4>
+                        <div id="debug-tokens" class="debug-content">No token data yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>Embedding Details</h4>
+                        <div id="debug-embedding" class="debug-content">No embedding data yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>Statistics</h4>
+                        <div id="debug-stats" class="debug-content">No statistics yet</div>
+                    </div>
+                </div>
+                
+                <div class="debug-column">
+                    <h4>RAG System Details</h4>
+                    
+                    <div class="debug-section">
+                        <h4>Question</h4>
+                        <div id="debug-question" class="debug-content">No question asked yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>Retrieved Documents (Top 3)</h4>
+                        <div id="debug-docs" class="debug-content">No documents retrieved yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>Similarity Scores</h4>
+                        <div id="debug-distances" class="debug-content">No similarity scores yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>Context Sent to LLM</h4>
+                        <div id="debug-context" class="debug-content">No context yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>Full Prompt</h4>
+                        <div id="debug-prompt" class="debug-content">No prompt yet</div>
+                    </div>
+                    
+                    <div class="debug-section">
+                        <h4>LLM Response</h4>
+                        <div id="debug-answer" class="debug-content">No response yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="data-info-box" style="margin-top:30px; padding:15px; background:#f4f8fa; border-radius:5px; border:1px solid #b0c4de; max-width:600px;">
+            <h3>📊 Data Information</h3>
+            <div id="data-info-content">Loading data info...</div>
+        </div>    
+    </div>
+
+    <script>
+    function log(msg) {
+        const logDiv = document.getElementById("log");
+        logDiv.innerHTML += msg + "<br>";
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function updateDebugPanel(debugData) {
+        document.getElementById("debug-question").textContent = debugData.question || "No question";
+        document.getElementById("debug-docs").textContent = debugData.retrieved_documents ? debugData.retrieved_documents.join("\n\n---\n\n") : "No documents";
+        document.getElementById("debug-distances").textContent = debugData.similarity_distances ? debugData.similarity_distances.map((d, i) => `Doc ${i+1}: ${d.toFixed(4)}`).join("\n") : "No distances";
+        document.getElementById("debug-context").textContent = debugData.context || "No context";
+        document.getElementById("debug-prompt").textContent = debugData.prompt || "No prompt";
+        document.getElementById("debug-answer").textContent = debugData.answer || "No answer";
+        
+        // Format timing information
+        if (debugData.timing) {
+            const timingText = Object.entries(debugData.timing)
+                .map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${value.toFixed(4)}s`)
+                .join("\n");
+            document.getElementById("debug-timing").textContent = timingText;
+        } else {
+            document.getElementById("debug-timing").textContent = "No timing data";
+        }
+        
+        // Format token information
+        if (debugData.tokens) {
+            const tokenText = Object.entries(debugData.tokens)
+                .map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${value}`)
+                .join("\n");
+            document.getElementById("debug-tokens").textContent = tokenText;
+        } else {
+            document.getElementById("debug-tokens").textContent = "No token data";
+        }
+        
+        // Format embedding information
+        if (debugData.embedding) {
+            const embeddingText = Object.entries(debugData.embedding)
+                .map(([key, value]) => `${key.replace(/_/g, ' ').toUpperCase()}: ${value}`)
+                .join("\n");
+            document.getElementById("debug-embedding").textContent = embeddingText;
+        } else {
+            document.getElementById("debug-embedding").textContent = "No embedding data";
+        }
+        
+        // Format process steps
+        if (debugData.process_steps) {
+            document.getElementById("debug-process").textContent = debugData.process_steps.join("\n");
+        } else {
+            document.getElementById("debug-process").textContent = "No process data";
+        }
+        
+        document.getElementById("debug-stats").textContent = `Documents retrieved: ${debugData.num_docs_retrieved || 0}\nContext length: ${debugData.context_length || 0} characters`;
+    }
+
+    // Show/hide prompt engineering section for Stock Agent
+    const agentSelect = document.getElementById("agent-select");
+    const agentPromptSection = document.getElementById("agent-prompt-section");
+    const apiEndpointSpan = document.getElementById("api-endpoint");
+
+    agentSelect.addEventListener("change", function() {
+        if (agentSelect.value === "stock") {
+            agentPromptSection.style.display = "block";
+            apiEndpointSpan.textContent = "/chat_debug (with custom prompt)";
+        } else {
+            agentPromptSection.style.display = "none";
+            apiEndpointSpan.textContent = "/chat_debug";
+        }
+        // Hide JSON output on agent change
+        document.getElementById("json-output").style.display = "none";
+    });
+
+    // Helper to get the prompt for Stock Agent
+    function getStockAgentPrompt(question, market) {
+        let template = document.getElementById("agent-prompt").value;
+        return template.replace("{{question}}", question).replace("{{market}}", market);
+    }
+
+    async function ask() {
+        const q = document.getElementById("question").value;
+        const agent = document.getElementById("agent-select").value;
+        const market = document.getElementById("market-select").value;
+        document.getElementById("answer").innerText = "";
+        document.getElementById("json-output").style.display = "none";
+        document.getElementById("json-output-pre").textContent = "";
+        clearDebugInfo();
+        log("[1] Preparing to send question: " + q);
+        updateProcessStep("1. Starting RAG pipeline...");
+        try {
+            log("[2] Sending POST request to backend...");
+            updateProcessStep("2. Sending request to backend...");
+            let body = { question: q, agent: agent, market: market };
+            // If Stock Agent, send the custom prompt
+            if (agent === "stock") {
+                body.prompt = getStockAgentPrompt(q, market);
+            }
+            const res = await fetch("/chat_debug", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+            log("[3] Response received, parsing...");
+            updateProcessStep("3. Processing response...");
+            if (!res.ok) {
+                log("[ERROR] Backend returned status: " + res.status);
+                document.getElementById("answer").innerText = "Error: Backend returned status " + res.status;
+                updateProcessStep("ERROR: Backend error");
+                return;
+            }
+            const data = await res.json();
+            log("[4] Parsed response successfully");
+            updateProcessStep("4. Response processed successfully");
+            log("[5] Updating debug panel...");
+            document.getElementById("answer").innerText = data.answer;
+            updateDebugPanel(data);
+            // Show JSON output if present
+            if (data.agent_json || (data.answer && data.answer.startsWith("{"))) {
+                let jsonObj = data.agent_json;
+                if (!jsonObj) {
+                    try { jsonObj = JSON.parse(data.answer); } catch (e) { jsonObj = null; }
+                }
+                if (jsonObj) {
+                    document.getElementById("json-output-pre").textContent = JSON.stringify(jsonObj, null, 2);
+                    document.getElementById("json-output").style.display = "block";
+                }
+            }
+            log("[6] Answer displayed and debug info updated.");
+            updateProcessStep("5. Complete! Answer generated.");
+        } catch (err) {
+            log("[ERROR] " + err);
+            document.getElementById("answer").innerText = "Error: " + err;
+            updateProcessStep("ERROR: " + err);
+        }
+    }
+
+    function clearDebugInfo() {
+        document.getElementById("debug-question").textContent = "Processing...";
+        document.getElementById("debug-docs").textContent = "Retrieving documents...";
+        document.getElementById("debug-distances").textContent = "Calculating similarities...";
+        document.getElementById("debug-context").textContent = "Building context...";
+        document.getElementById("debug-prompt").textContent = "Constructing prompt...";
+        document.getElementById("debug-answer").textContent = "Generating response...";
+        document.getElementById("debug-timing").textContent = "Measuring performance...";
+        document.getElementById("debug-tokens").textContent = "Counting tokens...";
+        document.getElementById("debug-embedding").textContent = "Processing embeddings...";
+        document.getElementById("debug-stats").textContent = "Calculating statistics...";
+    }
+
+    function updateProcessStep(step) {
+        const processDiv = document.getElementById("debug-process");
+        const currentTime = new Date().toLocaleTimeString();
+        processDiv.innerHTML += `[${currentTime}] ${step}\n`;
+        processDiv.scrollTop = processDiv.scrollHeight;
+    }
+
+    // Fetch and display data info on page load
+    async function fetchDataInfo() {
+        try {
+            const res = await fetch('/data_info');
+            if (!res.ok) {
+                document.getElementById('data-info-content').innerText = 'Error loading data info.';
+                return;
+            }
+            const info = await res.json();
+            // Populate market selector
+            const marketSelect = document.getElementById('market-select');
+            marketSelect.innerHTML = '';
+            if (info.markets && info.markets.length > 0) {
+                for (const m of info.markets) {
+                    const opt = document.createElement('option');
+                    opt.value = m.market;
+                    opt.textContent = m.market;
+                    marketSelect.appendChild(opt);
+                }
+            }
+            let html = '<table style="width:100%;border-collapse:collapse;">';
+            html += '<tr><th style="text-align:left; padding:4px;">Market</th><th style="text-align:right; padding:4px;"># Stocks</th><th style="text-align:center; padding:4px;">Time Range</th></tr>';
+            for (const m of info.markets) {
+                html += `<tr><td style="padding:4px;">${m.market}</td><td style="text-align:right; padding:4px;">${m.num_stocks}</td><td style="text-align:center; padding:4px;">${m.min_date || '-'} to ${m.max_date || '-'}</td></tr>`;
+            }
+            html += '</table>';
+            document.getElementById('data-info-content').innerHTML = html;
+        } catch (e) {
+            document.getElementById('data-info-content').innerText = 'Error loading data info.';
+        }
+    }
+    window.onload = function() {
+        fetchDataInfo();
+    }
+    </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+
+@startuml RAG_System_Component_Diagram
+!theme plain
+title RAG System - Component Diagram
+
+package "Frontend" {
+    [Web Interface] as UI
+    [Market Selector] as MS
+    [Agent Selector] as AS
+}
+
+package "Backend API" {
+    [Flask Server] as API
+    [Chat Endpoint] as CE
+    [Data Info Endpoint] as DIE
+}
+
+package "RAG Pipeline" {
+    [Query Processing] as QP
+    [Embedding Model] as EM
+    [Vector Database] as VD
+    [Document Retrieval] as DR
+    [LLM Generation] as LG
+}
+
+package "Data Layer" {
+    [Market Data] as MD
+    [Text Chunks] as TC
+    [Financial Concepts] as FC
+}
+
+package "Agents" {
+    [Financial RAG Agent] as FRA
+    [Broker Agent] as BA
+}
+
+' Frontend to Backend
+UI --> API
+MS --> API
+AS --> API
+
+' API to RAG Pipeline
+API --> QP
+CE --> QP
+DIE --> MD
+
+' RAG Pipeline Flow
+QP --> EM
+EM --> VD
+VD --> DR
+DR --> LG
+
+' Data Sources
+MD --> TC
+TC --> VD
+FC --> VD
+
+' Agents
+FRA --> QP
+BA --> MD
+
+@enduml

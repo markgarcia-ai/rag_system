@@ -1,0 +1,17 @@
+
+@startuml RAG_System_Class_Diagram
+!theme plain
+title RAG System - Class Diagram
+
+class "FinancialRAGAgent" {
+  __init__()
+  answer()
+}
+
+class "BrokerAgent" {
+  __init__()
+  answer()
+}
+
+
+@enduml

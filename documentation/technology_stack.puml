@@ -1,0 +1,43 @@
+
+@startuml RAG_System_Technology_Stack
+!theme plain
+title RAG System - Technology Stack
+
+package "Frontend" {
+    [HTML/CSS/JavaScript] as FE
+}
+
+package "Backend" {
+    [Flask] as FLASK
+    [Python 3.11] as PYTHON
+}
+
+package "AI/ML" {
+    [SentenceTransformers] as ST
+    [Llama.cpp] as LLAMA
+    [ChromaDB] as CHROMA
+}
+
+package "Data Processing" {
+    [Pandas] as PD
+    [yfinance] as YF
+    [CSV Processing] as CSV
+}
+
+package "Deployment" {
+    [Virtual Environment] as VENV
+    [Local Development] as LOCAL
+}
+
+FE --> FLASK
+FLASK --> PYTHON
+PYTHON --> ST
+PYTHON --> LLAMA
+PYTHON --> CHROMA
+PYTHON --> PD
+PYTHON --> YF
+PYTHON --> CSV
+PYTHON --> VENV
+VENV --> LOCAL
+
+@enduml

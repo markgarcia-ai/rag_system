@@ -1,0 +1,28 @@
+
+@startuml RAG_System_Data_Flow
+!theme plain
+title RAG System - Data Flow Diagram
+
+!define RECTANGLE class
+
+RECTANGLE "CSV Files
+(SP500, NASDAQ, Crypto)" as CSV
+RECTANGLE "Text Chunks
+(Processed Data)" as TC
+RECTANGLE "Embeddings
+(Vector Representations)" as EMB
+RECTANGLE "ChromaDB
+(Vector Store)" as DB
+RECTANGLE "User Query" as Q
+RECTANGLE "Retrieved Documents" as RD
+RECTANGLE "LLM Response" as RESP
+
+CSV --> TC : csv_to_text_chunks.py
+TC --> EMB : sentence_transformers
+EMB --> DB : persist_embeddings()
+Q --> EMB : query_embedding()
+EMB --> DB : similarity_search()
+DB --> RD : top_k_results
+RD --> RESP : generate_answer()
+
+@enduml

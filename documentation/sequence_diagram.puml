@@ -1,0 +1,27 @@
+
+@startuml RAG_System_Sequence_Diagram
+!theme plain
+title RAG System - Query Processing Sequence
+
+actor User
+participant "Frontend" as UI
+participant "Flask API" as API
+participant "RAG Engine" as RAG
+participant "Embedding Model" as EM
+participant "ChromaDB" as DB
+participant "LLM" as LLM
+
+User -> UI: Ask Question
+UI -> API: POST /chat_debug
+API -> RAG: query_rag_debug()
+RAG -> EM: query_embedding()
+EM -> DB: similarity_search()
+DB -> EM: top_k_documents
+EM -> RAG: retrieved_docs
+RAG -> LLM: generate_answer()
+LLM -> RAG: response_text
+RAG -> API: debug_info
+API -> UI: JSON response
+UI -> User: Display Answer
+
+@enduml
