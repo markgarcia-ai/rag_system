@@ -96,3 +96,12 @@ data/*/
 
 # Vector stores
 vectorstore/
+
+# API Keys and secrets
+*.key
+*.secret
+api_keys.txt
+secrets.txt
+.env
+.env.local
+.env.*.local
